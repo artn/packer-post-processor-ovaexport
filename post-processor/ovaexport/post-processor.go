@@ -25,7 +25,6 @@ type Config struct {
   RemoveEthernet        string `mapstructure:"remove_ethernet"`
   RemoveFloppy          string `mapstructure:"remove_floppy"`
   RemoveOpticalDrive    string `mapstructure:"remove_optical_drive"`
-  Compression           uint   `mapstructure:"compression"`
 
   ctx interpolate.Context
 }
@@ -123,17 +122,8 @@ func (p *PostProcessor) Configure(raws ...interface{}) error {
     p.config.RemoveOpticalDrive = "false"
   }
 
-  if ! (p.config.Compression > 0) {
-    p.config.Compression = 9
-  }
-
   // Accumulate any errors
   errs := new(packer.MultiError)
-
-  if !(p.config.Compression >= 0 && p.config.Compression <= 9) {
-    errs = packer.MultiErrorAppend(
-    errs, fmt.Errorf("Invalid compression level. Must be between 1 and 9, or 0 for no compression."))
-  }
 
   if !(p.config.DiskMode == "thick" ||
     p.config.DiskMode == "thin" ||
@@ -154,15 +144,12 @@ func (p *PostProcessor) Configure(raws ...interface{}) error {
       errs, fmt.Errorf("ovftool not found: %s", err))
   }
 
-  // First define all our templatable parameters that are _required_
-  var compression = string(p.config.Compression)
   templates := map[string]*string{
     "disk_mode":            &p.config.DiskMode,
     "target":               &p.config.Target,
     "remove_ethernet":      &p.config.RemoveEthernet,
     "remove_floppy":        &p.config.RemoveFloppy,
     "remove_optical_drive": &p.config.RemoveOpticalDrive,
-    "compression":          &compression,
   }
 
   for key, ptr := range templates {
@@ -217,7 +204,6 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
   args := []string{
     "--acceptAllEulas",
     fmt.Sprintf("--diskMode=%s", p.config.DiskMode),
-    fmt.Sprintf("--compress=%d", p.config.Compression),
     fmt.Sprintf("%s", vmx),
     fmt.Sprintf("%s", p.config.Target),
   }
